@@ -1,0 +1,1801 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>Elemental Duel - Расширенная версия</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+            min-height: 100vh;
+            padding: 15px;
+            color: white;
+        }
+
+        .game-container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .screen {
+            display: none;
+        }
+        .screen.active {
+            display: block;
+        }
+
+        /* СТАРТОВЫЙ ЭКРАН С АНИМАЦИЕЙ */
+        .start-screen {
+            text-align: center;
+            padding: 40px 20px;
+            min-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .start-screen::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(78,205,196,0.1) 0%, transparent 70%);
+            animation: rotate 20s linear infinite;
+            z-index: 0;
+        }
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .start-screen h1 {
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #ff6b6b, #4ecdc4, #ffd700, #ff6b6b);
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 15px;
+            animation: gradientShift 4s ease infinite;
+            position: relative;
+            z-index: 1;
+        }
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .elements {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            font-size: 2.5em;
+            margin: 30px 0;
+            position: relative;
+            z-index: 1;
+        }
+        .elements span {
+            background: rgba(255,255,255,0.1);
+            width: 65px;
+            height: 65px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 20px;
+            transition: all 0.3s;
+            cursor: pointer;
+            animation: float 3s infinite;
+        }
+        .elements span:hover {
+            transform: scale(1.2);
+            background: rgba(255,255,255,0.2);
+            box-shadow: 0 0 20px rgba(78,205,196,0.5);
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        button {
+            background: linear-gradient(135deg, #ff6b6b, #4ecdc4);
+            border: none;
+            padding: 12px 25px;
+            font-size: 1em;
+            border-radius: 50px;
+            color: white;
+            font-weight: bold;
+            margin: 8px;
+            width: 80%;
+            max-width: 250px;
+            cursor: pointer;
+            position: relative;
+            z-index: 1;
+            transition: all 0.3s;
+            overflow: hidden;
+        }
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+        button:hover::before {
+            left: 100%;
+        }
+        button:active { transform: scale(0.97); }
+        button.secondary { background: linear-gradient(135deg, #667eea, #764ba2); }
+
+        /* СТАТИСТИКА С ПРОГРЕСС-БАРАМИ */
+        .stats-panel {
+            display: flex;
+            justify-content: space-between;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 8px;
+            font-size: 0.8em;
+        }
+        .player-info, .enemy-info {
+            display: flex;
+            gap: 12px;
+            font-weight: bold;
+            flex-wrap: wrap;
+        }
+        .hp-bar, .mana-bar {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .hp-fill {
+            width: 60px;
+            height: 6px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .hp-fill-inner {
+            height: 100%;
+            background: #ff6b6b;
+            transition: width 0.3s;
+        }
+        .mana-fill {
+            width: 60px;
+            height: 6px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .mana-fill-inner {
+            height: 100%;
+            background: #4ecdc4;
+            transition: width 0.3s;
+        }
+
+        /* АРТЕФАКТЫ С ЭФФЕКТАМИ */
+        .artifacts-panel {
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 8px;
+            margin-bottom: 10px;
+        }
+        .artifacts-title {
+            text-align: center;
+            font-size: 0.7em;
+            color: #ffd700;
+            margin-bottom: 5px;
+        }
+        .artifacts-slots {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .artifact-slot {
+            text-align: center;
+            padding: 5px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            min-width: 55px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .artifact-slot.filled {
+            background: rgba(78,205,196,0.2);
+            border: 1px solid #4ecdc4;
+            box-shadow: 0 0 10px rgba(78,205,196,0.3);
+        }
+        .slot-icon { font-size: 1.1em; }
+        .slot-name { font-size: 0.55em; color: #ccc; }
+        .slot-item { font-size: 0.65em; font-weight: bold; }
+        .set-bonus {
+            text-align: center;
+            margin-top: 5px;
+            padding: 4px;
+            background: rgba(255,215,0,0.15);
+            border-radius: 8px;
+            font-size: 0.6em;
+            color: #ffd700;
+        }
+
+        /* ПОЛЕ БОЯ */
+        .battle-area {
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(5px);
+            border-radius: 20px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+        .enemy-section {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .enemy-card {
+            width: 120px;
+            height: 140px;
+            background: linear-gradient(135deg, #2c3e50, #1a1a2e);
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .enemy-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .enemy-card:hover::before {
+            opacity: 1;
+        }
+        .enemy-art { font-size: 3em; transition: transform 0.3s; }
+        .enemy-card:hover .enemy-art { transform: scale(1.1); }
+        .enemy-hp { margin-top: 5px; font-size: 0.9em; }
+
+        /* ЗОНА КОМБИНАЦИИ */
+        .combine-area {
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(5px);
+            border-radius: 20px;
+            padding: 12px;
+            margin: 12px 0;
+            border: 2px dashed rgba(78,205,196,0.5);
+            text-align: center;
+            min-height: 120px;
+            transition: all 0.2s;
+        }
+        .combine-area.drag-over {
+            border-color: #4ecdc4;
+            background: rgba(78,205,196,0.2);
+            transform: scale(1.02);
+            box-shadow: 0 0 20px rgba(78,205,196,0.3);
+        }
+        .pending-cards {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin: 8px 0;
+            flex-wrap: wrap;
+        }
+        .pending-card {
+            background: linear-gradient(135deg, #2c3e50, #1a1a2e);
+            border-radius: 12px;
+            padding: 10px;
+            min-width: 75px;
+            position: relative;
+            animation: cardAppear 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        @keyframes cardAppear {
+            0% { transform: scale(0) rotate(-180deg); opacity: 0; }
+            50% { transform: scale(1.1) rotate(0deg); }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        .remove-card {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 24px;
+            height: 24px;
+            background: #ff6b6b;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .remove-card:hover { transform: scale(1.2); }
+        .combine-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .combine-buttons button {
+            width: auto;
+            padding: 8px 16px;
+            font-size: 0.8em;
+            margin: 0;
+        }
+        .combo-info {
+            font-size: 0.75em;
+            margin-top: 5px;
+            color: #ffd700;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* КАРТЫ С 3D ЭФФЕКТОМ */
+        .hand-cards {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+        .card {
+            width: 80px;
+            background: linear-gradient(135deg, #fff, #e0e0e0);
+            border-radius: 12px;
+            padding: 8px;
+            text-align: center;
+            color: #1a1a2e;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+            position: relative;
+            transform-style: preserve-3d;
+        }
+        .card:hover {
+            transform: translateY(-15px) scale(1.05) rotateX(5deg);
+            box-shadow: 0 20px 30px rgba(0,0,0,0.3);
+            z-index: 10;
+        }
+        .card:active { transform: scale(0.95); }
+        .card.dragging {
+            opacity: 0.5;
+            transform: scale(0.95);
+        }
+        .card.fire { background: linear-gradient(135deg, #ff6b6b, #ff4757); color: white; }
+        .card.water { background: linear-gradient(135deg, #4ecdc4, #45b7d1); color: white; }
+        .card.nature { background: linear-gradient(135deg, #6bcf7f, #4caf50); color: white; }
+        .card.lightning { background: linear-gradient(135deg, #f9ca24, #f0932b); color: white; }
+        .card.ice { background: linear-gradient(135deg, #70a1ff, #5352ed); color: white; }
+        .card-icon { font-size: 1.8em; transition: transform 0.2s; }
+        .card:hover .card-icon { transform: scale(1.2); }
+        .card-name { font-weight: bold; font-size: 0.7em; margin: 3px 0; }
+        .card-cost { font-size: 0.65em; opacity: 0.9; }
+        .card.disabled {
+            opacity: 0.5;
+            filter: grayscale(0.3);
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        /* ЛОГ С АНИМАЦИЕЙ */
+        .log {
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+            border-radius: 12px;
+            padding: 8px;
+            height: 80px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            font-size: 0.7em;
+        }
+        .log-entry {
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .log-critical { color: #ff6b6b; }
+        .log-combo { color: #ffd700; }
+        .log-elemental { color: #4ecdc4; }
+        .log-artifact { color: #ff9800; }
+        .log-effect { color: #ff69b4; }
+
+        /* КНОПКИ */
+        .game-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .game-buttons button {
+            width: auto;
+            padding: 8px 16px;
+            font-size: 0.8em;
+            margin: 0;
+        }
+
+        /* МОДАЛЬНЫЕ ОКНА С АНИМАЦИЕЙ */
+        .reward-screen, .gameover-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .reward-window, .gameover-window {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            width: 85%;
+            max-width: 300px;
+            animation: bounceIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); }
+            70% { transform: scale(0.95); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .reward-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .reward-option {
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .reward-option:hover {
+            transform: scale(1.02);
+            background: rgba(255,255,255,0.2);
+        }
+        .tooltip {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 8px 16px;
+            z-index: 1001;
+            font-size: 0.75em;
+            text-align: center;
+            max-width: 80%;
+            animation: fadeInUp 0.2s ease;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        .hidden { display: none !important; }
+
+        /* ЭФФЕКТЫ НА ВРАГЕ */
+        .enemy-effects {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+        .effect-badge {
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(5px);
+            border-radius: 20px;
+            padding: 3px 8px;
+            font-size: 0.7em;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            animation: glow 1s infinite;
+        }
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.2); }
+            50% { box-shadow: 0 0 10px 2px rgba(255,255,255,0.3); }
+        }
+        .effect-burn { background: #ff6b6b; }
+        .effect-poison { background: #6bcf7f; }
+        .effect-freeze { background: #70a1ff; }
+        .effect-shock { background: #f9ca24; color: #1a1a2e; }
+        .effect-weak { background: #a29bfe; }
+        .effect-regen { background: #00cec9; }
+
+        /* ВСПЛЫВАЮЩИЕ ЦИФРЫ УРОНА */
+        .damage-popup {
+            position: fixed;
+            font-size: 1.5em;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 1000;
+            animation: damageFloat 0.8s ease-out forwards;
+        }
+        @keyframes damageFloat {
+            0% { transform: translateY(0) scale(0.5); opacity: 1; }
+            50% { transform: translateY(-40px) scale(1.2); }
+            100% { transform: translateY(-80px) scale(0.8); opacity: 0; }
+        }
+        .heal-popup {
+            color: #4caf50;
+            text-shadow: 0 0 5px rgba(76,175,80,0.5);
+        }
+        .crit-popup {
+            color: #ffd700;
+            text-shadow: 0 0 5px rgba(255,215,0,0.5);
+            font-size: 2em;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container" id="app"></div>
+
+    <script>
+        // ========================================
+        // Elemental Duel - РАСШИРЕННАЯ ВЕРСИЯ
+        // Новые механики: криты, комбо-счётчик, ежедневные вызовы
+        // ========================================
+
+        // КОМБИНАЦИИ С ЭФФЕКТАМИ (расширенные)
+        const COMBINATIONS = {
+            'fire+water': { name: 'Пар', icon: '💨', damage: 18, manaCost: 2, effect: 'weak', effectValue: 0.85, effectDuration: 2, desc: 'Окутывает врага паром (-15% урона на 2 хода)' },
+            'water+fire': { name: 'Пар', icon: '💨', damage: 18, manaCost: 2, effect: 'weak', effectValue: 0.85, effectDuration: 2, desc: 'Окутывает врага паром (-15% урона на 2 хода)' },
+            'fire+nature': { name: 'Взрыв', icon: '💥', damage: 22, manaCost: 3, effect: 'burn', effectValue: 5, effectDuration: 3, desc: 'Поджигает врага (5 урона в ход на 3 хода)' },
+            'nature+fire': { name: 'Взрыв', icon: '💥', damage: 22, manaCost: 3, effect: 'burn', effectValue: 5, effectDuration: 3, desc: 'Поджигает врага (5 урона в ход на 3 хода)' },
+            'water+nature': { name: 'Прилив', icon: '🌊', damage: 15, heal: 10, manaCost: 3, effect: null, desc: 'Исцеляет 10 HP' },
+            'nature+water': { name: 'Прилив', icon: '🌊', damage: 15, heal: 10, manaCost: 3, effect: null, desc: 'Исцеляет 10 HP' },
+            'water+ice': { name: 'Ледяная глыба', icon: '🧊', damage: 18, manaCost: 4, effect: 'freeze', effectDuration: 2, desc: 'Замораживает врага на 2 хода' },
+            'ice+water': { name: 'Ледяная глыба', icon: '🧊', damage: 18, manaCost: 4, effect: 'freeze', effectDuration: 2, desc: 'Замораживает врага на 2 хода' },
+            'lightning+ice': { name: 'Ледяная молния', icon: '⚡❄️', damage: 28, manaCost: 5, effect: 'shock', effectValue: 0.7, effectDuration: 2, desc: 'Парализует врага (-30% точности на 2 хода)' },
+            'ice+lightning': { name: 'Ледяная молния', icon: '⚡❄️', damage: 28, manaCost: 5, effect: 'shock', effectValue: 0.7, effectDuration: 2, desc: 'Парализует врага (-30% точности на 2 хода)' },
+            'fire+ice': { name: 'Талая вода', icon: '💧', damage: 12, heal: 12, manaCost: 2, effect: null, desc: 'Исцеляет 12 HP' },
+            'ice+fire': { name: 'Талая вода', icon: '💧', damage: 12, heal: 12, manaCost: 2, effect: null, desc: 'Исцеляет 12 HP' },
+            'fire+lightning': { name: 'Громовой шар', icon: '🌩️', damage: { min: 15, max: 35 }, manaCost: 4, effect: 'shock', effectValue: 0.8, effectDuration: 2, desc: 'Парализует врага (-20% точности на 2 хода)' },
+            'lightning+fire': { name: 'Громовой шар', icon: '🌩️', damage: { min: 15, max: 35 }, manaCost: 4, effect: 'shock', effectValue: 0.8, effectDuration: 2, desc: 'Парализует врага (-20% точности на 2 хода)' },
+            'nature+ice': { name: 'Цветущий лёд', icon: '🌸', damage: 10, manaCost: 3, effect: 'regen', effectValue: 6, effectDuration: 3, desc: 'Даёт регенерацию (6 HP в ход на 3 хода)' },
+            'ice+nature': { name: 'Цветущий лёд', icon: '🌸', damage: 10, manaCost: 3, effect: 'regen', effectValue: 6, effectDuration: 3, desc: 'Даёт регенерацию (6 HP в ход на 3 хода)' },
+            'water+lightning': { name: 'Электрошок', icon: '⚡💧', damage: 20, manaCost: 4, effect: 'weak', effectValue: 0.8, effectDuration: 2, desc: 'Ослабляет врага (-20% урона на 2 хода)' },
+            'lightning+water': { name: 'Электрошок', icon: '⚡💧', damage: 20, manaCost: 4, effect: 'weak', effectValue: 0.8, effectDuration: 2, desc: 'Ослабляет врага (-20% урона на 2 хода)' },
+            'nature+lightning': { name: 'Буря', icon: '🌩️🌿', damage: 16, manaCost: 4, effect: 'poison', effectValue: 4, effectDuration: 4, desc: 'Отравляет врага (4 урона в ход на 4 хода)' },
+            'lightning+nature': { name: 'Буря', icon: '🌩️🌿', damage: 16, manaCost: 4, effect: 'poison', effectValue: 4, effectDuration: 4, desc: 'Отравляет врага (4 урона в ход на 4 хода)' },
+            'fire+fire': { name: 'Пламя', icon: '🔥🔥', damage: 24, manaCost: 4, effect: 'burn', effectValue: 6, effectDuration: 3, desc: 'Сильный поджог (6 урона в ход на 3 хода)' },
+            'water+water': { name: 'Потоп', icon: '💧💧', damage: 20, manaCost: 4, effect: 'weak', effectValue: 0.75, effectDuration: 2, desc: 'Ослабляет врага (-25% урона на 2 хода)' },
+            'nature+nature': { name: 'Гнев леса', icon: '🌿🌿', damage: 18, manaCost: 4, effect: 'poison', effectValue: 5, effectDuration: 4, desc: 'Отравляет врага (5 урона в ход на 4 хода)' },
+            'lightning+lightning': { name: 'Гром', icon: '⚡⚡', damage: { min: 20, max: 40 }, manaCost: 5, effect: 'shock', effectValue: 0.65, effectDuration: 2, desc: 'Парализует врага (-35% точности на 2 хода)' },
+            'ice+ice': { name: 'Стужа', icon: '❄️❄️', damage: 20, manaCost: 5, effect: 'freeze', effectDuration: 3, desc: 'Замораживает врага на 3 хода' }
+        };
+
+        // БАЗОВЫЕ КАРТЫ
+        const BASE_CARDS = [
+            { id: 'fire', name: 'Огонь', element: 'fire', manaCost: 1, damage: 8, icon: '🔥', desc: 'Базовая атака огнём' },
+            { id: 'water', name: 'Вода', element: 'water', manaCost: 1, damage: 7, icon: '💧', desc: 'Базовая атака водой' },
+            { id: 'nature', name: 'Природа', element: 'nature', manaCost: 1, damage: 8, icon: '🌿', desc: 'Базовая атака природой' },
+            { id: 'lightning', name: 'Молния', element: 'lightning', manaCost: 2, damage: { min: 5, max: 15 }, icon: '⚡', desc: 'Нестабильная молния' },
+            { id: 'ice', name: 'Лёд', element: 'ice', manaCost: 2, damage: 7, icon: '❄️', desc: 'Базовая атака льдом' }
+        ];
+
+        // АРТЕФАКТЫ
+        const ARTIFACTS = [
+            { id: 'fire_sword', name: 'Пылающий Меч', desc: '+25% к урону огнём', slot: 'weapon', set: 'fire', type: 'element_damage', element: 'fire', value: 1.25, icon: '⚔️🔥' },
+            { id: 'frost_blade', name: 'Ледяной Клинок', desc: '+1 ход заморозки', slot: 'weapon', set: 'ice', type: 'freeze_bonus', value: 1, icon: '⚔️❄️' },
+            { id: 'thunder_hammer', name: 'Громовой Молот', desc: '+15% двойной атаки', slot: 'weapon', set: 'lightning', type: 'double', value: 0.15, icon: '🔨⚡' },
+            { id: 'dragon_scale', name: 'Чешуя Дракона', desc: '-20% входящего урона', slot: 'armor', set: 'dragon', type: 'defense', value: 0.8, icon: '🛡️🐉' },
+            { id: 'nature_crown', name: 'Венец Леса', desc: '+50% к урону природы', slot: 'helmet', set: 'nature', type: 'element_damage', element: 'nature', value: 1.5, icon: '👑🌿' },
+            { id: 'wind_boots', name: 'Сапоги Ветра', desc: '+10% уклонения', slot: 'boots', set: 'wind', type: 'dodge', value: 0.1, icon: '👢💨' },
+            { id: 'phoenix_amulet', name: 'Амулет Феникса', desc: 'Воскрешение (50% HP) + усиление поджога', slot: 'amulet', set: 'fire', type: 'revive', value: true, icon: '📿🔥' },
+            { id: 'vampire_staff', name: 'Вампирий Жезл', desc: '+15% вампиризма', slot: 'weapon', set: 'dark', type: 'vampire', value: 0.15, icon: '🏮🩸' }
+        ];
+
+        // СЕТОВЫЕ БОНУСЫ
+        const SET_BONUSES = {
+            fire: { 2: '🔥 +15% урона, +2 урона от поджога', 3: '🔥 Огненная аура: 6 урона в ход' },
+            ice: { 2: '❄️ +1 ход заморозки', 3: '❄️ Ледяная броня: -20% урона' },
+            lightning: { 2: '⚡ +10% двойной атаки', 3: '⚡ Удар грома: +25% урона молнией' },
+            nature: { 2: '🌿 +15 HP, +2 к отравлению', 3: '🌿 Лечение: +6 HP/ход' },
+            dragon: { 2: '🐉 +20% урона', 3: '🐉 Непробиваемая чешуя: -30% урона' },
+            wind: { 2: '💨 +15% уклонения' }
+        };
+
+        // ВРАГИ
+        const ENEMIES = [
+            { name: 'Гоблин', hp: 40, art: '🔥👹', element: 'fire', damage: 8, icon: '🔥', reward: 10 },
+            { name: 'Элементаль', hp: 45, art: '💧🧝', element: 'water', damage: 7, icon: '💧', reward: 10 },
+            { name: 'Дух леса', hp: 50, art: '🌿👻', element: 'nature', damage: 9, icon: '🌿', reward: 10 },
+            { name: 'Слизень', hp: 35, art: '⚡🐌', element: 'lightning', damage: 6, icon: '⚡', reward: 10 },
+            { name: 'Голем', hp: 60, art: '❄️🗿', element: 'ice', damage: 10, icon: '❄️', reward: 15 },
+            { name: 'Дракон', hp: 90, art: '🔥🐉', element: 'fire', damage: 13, icon: '🔥', reward: 20 },
+            { name: 'Король стихий', hp: 120, art: '👑🌪️', element: null, damage: 15, icon: '👑', reward: 30 }
+        ];
+
+        // ЕЖЕДНЕВНЫЕ ВЫЗОВЫ
+        const DAILY_CHALLENGES = [
+            { name: '🔥 Пироманьяк', desc: 'Нанеси 100+ урона огнём', condition: 'fireDamage', target: 100, reward: 'legendary_artifact' },
+            { name: '❄️ Ледяной дождь', desc: 'Заморозь врага 5 раз', condition: 'freezeCount', target: 5, reward: 'epic_artifact' },
+            { name: '⚡ Громовержец', desc: 'Сделай 3 крита подряд', condition: 'critStreak', target: 3, reward: 'rare_card' },
+            { name: '🌿 Друг природы', desc: 'Используй 10 карт природы', condition: 'natureCards', target: 10, reward: 'common_artifact' },
+            { name: '💧 Водная стихия', desc: 'Восстанови 50+ HP', condition: 'totalHeal', target: 50, reward: 'rare_artifact' }
+        ];
+
+        // ОСНОВНОЙ КЛАСС
+        class ElementalDuel {
+            constructor() {
+                this.player = {
+                    hp: 100, maxHp: 100, mana: 5, maxMana: 10,
+                    level: 1, wins: 0, deck: [], regen: 0, coins: 0,
+                    equipment: { weapon: null, armor: null, helmet: null, boots: null, amulet: null }
+                };
+                this.currentEnemy = null;
+                this.pendingCards = [];
+                this.isPlayerTurn = true;
+                this.waitingForReward = false;
+                this.bestDamage = 0;
+                this.totalWins = 0;
+                this.reviveUsed = false;
+                this.comboCounter = 0;
+                this.lastCombo = null;
+                
+                // Статистика для достижений
+                this.stats = {
+                    fireDamage: 0,
+                    freezeCount: 0,
+                    critStreak: 0,
+                    bestCritStreak: 0,
+                    natureCards: 0,
+                    totalHeal: 0,
+                    combosDone: 0
+                };
+                
+                // Ежедневные вызовы
+                this.dailyChallenge = null;
+                this.challengeCompleted = false;
+                
+                // Эффекты на враге
+                this.enemyEffects = {
+                    burn: { damage: 0, turns: 0 },
+                    poison: { damage: 0, turns: 0 },
+                    freeze: { turns: 0 },
+                    shock: { value: 1, turns: 0 },
+                    weak: { value: 1, turns: 0 },
+                    regen: { value: 0, turns: 0 }
+                };
+                
+                // Бонусы от артефактов
+                this.activeBonuses = {
+                    dodgeChance: 0, globalDamage: 1, globalDefense: 1,
+                    doubleChance: 0, fireAura: 0, healPerTurn: 0, freezeBonus: 0,
+                    fireDamage: 1, waterDamage: 1, natureDamage: 1, lightningDamage: 1, iceDamage: 1,
+                    vampirePercent: 0, burnBonus: 0, poisonBonus: 0,
+                    critChance: 0.05, critDamage: 1.5
+                };
+                
+                this.init();
+            }
+
+            init() {
+                this.loadStats();
+                this.initDeck();
+                this.initDailyChallenge();
+                this.render('startScreen');
+                this.bindEvents();
+            }
+
+            loadStats() {
+                const saved = localStorage.getItem('elem_duel_stats');
+                if (saved) {
+                    const stats = JSON.parse(saved);
+                    this.totalWins = stats.totalWins || 0;
+                    this.bestDamage = stats.bestDamage || 0;
+                    this.player.coins = stats.coins || 0;
+                    this.stats = stats.gameStats || this.stats;
+                }
+            }
+
+            saveStats() {
+                localStorage.setItem('elem_duel_stats', JSON.stringify({
+                    totalWins: this.totalWins,
+                    bestDamage: this.bestDamage,
+                    coins: this.player.coins,
+                    gameStats: this.stats
+                }));
+            }
+
+            initDeck() {
+                this.player.deck = BASE_CARDS.map(c => ({ ...c }));
+            }
+
+            initDailyChallenge() {
+                const today = new Date().toDateString();
+                const saved = localStorage.getItem('daily_challenge');
+                if (saved && JSON.parse(saved).date === today) {
+                    this.dailyChallenge = JSON.parse(saved).challenge;
+                    this.challengeCompleted = JSON.parse(saved).completed;
+                } else {
+                    const randomChallenge = DAILY_CHALLENGES[Math.floor(Math.random() * DAILY_CHALLENGES.length)];
+                    this.dailyChallenge = { ...randomChallenge, progress: 0 };
+                    this.challengeCompleted = false;
+                    localStorage.setItem('daily_challenge', JSON.stringify({
+                        date: today,
+                        challenge: this.dailyChallenge,
+                        completed: false
+                    }));
+                }
+            }
+
+            updateChallengeProgress(condition, value) {
+                if (this.challengeCompleted) return;
+                if (this.dailyChallenge.condition === condition) {
+                    this.dailyChallenge.progress += value;
+                    if (this.dailyChallenge.progress >= this.dailyChallenge.target) {
+                        this.challengeCompleted = true;
+                        this.player.coins += 50;
+                        this.addLog(`🏆 ЕЖЕДНЕВНЫЙ ВЫЗОВ ВЫПОЛНЕН! +50 монет! 🏆`, 'critical');
+                        this.showTooltip(`🏆 Выполнен вызов: ${this.dailyChallenge.name}! +50 монет!`);
+                        this.saveStats();
+                    }
+                }
+            }
+
+            render(screen) {
+                const app = document.getElementById('app');
+                if (screen === 'gameScreen') {
+                    app.innerHTML = this.getGameScreenHTML();
+                    this.bindGameEvents();
+                    this.setupDragAndDrop();
+                    this.updateUI();
+                    this.updatePendingUI();
+                } else {
+                    app.innerHTML = this.getMenuScreenHTML(screen);
+                    this.bindMenuEvents();
+                }
+            }
+
+            getMenuScreenHTML(screen) {
+                if (screen === 'startScreen') {
+                    return `
+                        <div class="start-screen">
+                            <h1>⚔️ ELEMENTAL DUEL ⚔️</h1>
+                            <p>Комбинируй стихии для мощных эффектов!</p>
+                            <div class="elements">
+                                <span>🔥</span><span>💧</span><span>🌿</span><span>⚡</span><span>❄️</span>
+                            </div>
+                            <div style="margin: 15px 0; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 15px;">
+                                <div style="font-size: 0.8em;">📅 ЕЖЕДНЕВНЫЙ ВЫЗОВ:</div>
+                                <div style="font-size: 0.7em; color: #ffd700;">${this.dailyChallenge.name}: ${this.dailyChallenge.desc}</div>
+                                <div style="font-size: 0.7em;">Прогресс: ${this.dailyChallenge.progress}/${this.dailyChallenge.target}</div>
+                                <div style="font-size: 0.7em;">💰 Монет: ${this.player.coins}</div>
+                            </div>
+                            <button id="startBtn">▶ НАЧАТЬ ИГРУ</button>
+                            <button id="tutorialBtn" class="secondary">📖 ОБУЧЕНИЕ</button>
+                        </div>
+                    `;
+                } else {
+                    return `
+                        <div class="start-screen">
+                            <h2>📖 НОВЫЕ МЕХАНИКИ</h2>
+                            <div style="text-align: left; max-width: 500px; margin: 0 auto;">
+                                <p><strong>🔥 КРИТИЧЕСКИЙ УДАР</strong> - шанс 5% на удвоение урона</p>
+                                <p><strong>⚡ КОМБО</strong> - последовательные атаки увеличивают урон</p>
+                                <p><strong>📅 ЕЖЕДНЕВНЫЕ ВЫЗОВЫ</strong> - выполняй и получай награды</p>
+                                <p><strong>💰 МОНЕТЫ</strong> - покупай мощные артефакты</p>
+                                <p><strong>🏆 ДОСТИЖЕНИЯ</strong> - открывай новые возможности</p>
+                            </div>
+                            <div style="margin: 20px 0;">
+                                <h3>✨ КАК УЛУЧШИТЬ УРОН:</h3>
+                                <p>🔥 Собирай сетовые бонусы</p>
+                                <p>⚡ Используй комбинации подряд</p>
+                                <p>💧 Прокачивай артефакты</p>
+                            </div>
+                            <button id="backBtn" class="secondary">◀ НАЗАД</button>
+                        </div>
+                    `;
+                }
+            }
+
+            getGameScreenHTML() {
+                return `
+                    <div class="stats-panel">
+                        <div class="player-info">
+                            <div class="hp-bar">
+                                ❤️ <span id="playerHp">100</span>/<span id="playerMaxHp">100</span>
+                                <div class="hp-fill"><div class="hp-fill-inner" id="hpFill" style="width: 100%"></div></div>
+                            </div>
+                            <div class="mana-bar">
+                                💙 <span id="playerMana">5</span>/<span id="playerMaxMana">10</span>
+                                <div class="mana-fill"><div class="mana-fill-inner" id="manaFill" style="width: 50%"></div></div>
+                            </div>
+                            <div>⭐ Ур.<span id="playerLevel">1</span></div>
+                            <div>🏆 <span id="playerWins">0</span></div>
+                        </div>
+                        <div class="enemy-info">
+                            <div class="enemy-name" id="enemyName">Противник</div>
+                            <div>❤️ <span id="enemyHp">0</span>/<span id="enemyMaxHp">0</span></div>
+                            <div id="enemyElementIcon">🔥</div>
+                        </div>
+                    </div>
+
+                    <div class="artifacts-panel">
+                        <div class="artifacts-title">⚔️ АРТЕФАКТЫ ⚔️ <span style="color: #ffd700;">💰 ${this.player.coins}</span></div>
+                        <div class="artifacts-slots">
+                            <div class="artifact-slot" data-slot="weapon"><div class="slot-icon">⚔️</div><div class="slot-name">Оружие</div><div class="slot-item" id="weaponSlot">—</div></div>
+                            <div class="artifact-slot" data-slot="armor"><div class="slot-icon">🛡️</div><div class="slot-name">Броня</div><div class="slot-item" id="armorSlot">—</div></div>
+                            <div class="artifact-slot" data-slot="helmet"><div class="slot-icon">👑</div><div class="slot-name">Шлем</div><div class="slot-item" id="helmetSlot">—</div></div>
+                            <div class="artifact-slot" data-slot="boots"><div class="slot-icon">👢</div><div class="slot-name">Сапоги</div><div class="slot-item" id="bootsSlot">—</div></div>
+                            <div class="artifact-slot" data-slot="amulet"><div class="slot-icon">📿</div><div class="slot-name">Амулет</div><div class="slot-item" id="amuletSlot">—</div></div>
+                        </div>
+                        <div class="set-bonus" id="setBonus"></div>
+                    </div>
+
+                    <div class="battle-area">
+                        <div class="enemy-section">
+                            <div class="enemy-card" id="enemyCardElem">
+                                <div class="enemy-art" id="enemyArt">👾</div>
+                                <div class="enemy-hp" id="enemyHpText"></div>
+                            </div>
+                            <div class="enemy-effects" id="enemyEffects"></div>
+                            <div id="enemyStatus" style="margin-top: 5px;"></div>
+                        </div>
+
+                        <div class="combine-area" id="combineArea">
+                            <div id="combinePlaceholder">✨ ПЕРЕТАЩИ КАРТУ СЮДА ✨</div>
+                            <div class="pending-cards" id="pendingCards"></div>
+                            <div class="combo-info" id="comboInfo"></div>
+                            <div class="combine-buttons" id="combineButtons" style="display: none;">
+                                <button id="castComboBtn">🔮 СОЗДАТЬ КОМБИНАЦИЮ</button>
+                                <button id="clearComboBtn" class="secondary">🗑️ ОЧИСТИТЬ</button>
+                            </div>
+                        </div>
+
+                        <div class="hand-cards" id="handCards"></div>
+                    </div>
+
+                    <div class="log" id="logPanel">
+                        <div class="log-entry">✨ Перетащи карту в центр для комбинации ✨</div>
+                    </div>
+
+                    <div class="game-buttons">
+                        <button id="endTurnBtn">🏁 ЗАВЕРШИТЬ ХОД</button>
+                        <button id="restartBattleBtn" class="secondary">🔄 НОВАЯ БИТВА</button>
+                    </div>
+                `;
+            }
+
+            bindMenuEvents() {
+                const startBtn = document.getElementById('startBtn');
+                const tutorialBtn = document.getElementById('tutorialBtn');
+                const backBtn = document.getElementById('backBtn');
+                if (startBtn) startBtn.onclick = () => this.startGame();
+                if (tutorialBtn) tutorialBtn.onclick = () => this.render('tutorialScreen');
+                if (backBtn) backBtn.onclick = () => this.render('startScreen');
+            }
+
+            bindGameEvents() {
+                document.getElementById('endTurnBtn').onclick = () => this.endTurn();
+                document.getElementById('restartBattleBtn').onclick = () => this.restartBattle();
+                document.getElementById('castComboBtn').onclick = () => this.castCombo();
+                document.getElementById('clearComboBtn').onclick = () => this.clearPending();
+                
+                document.querySelectorAll('.artifact-slot').forEach(slot => {
+                    slot.onclick = () => this.showArtifactInfo(slot.dataset.slot);
+                });
+            }
+
+            setupDragAndDrop() {
+                const combineArea = document.getElementById('combineArea');
+                const cards = document.querySelectorAll('.card');
+                
+                combineArea.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    combineArea.classList.add('drag-over');
+                });
+                
+                combineArea.addEventListener('dragleave', () => {
+                    combineArea.classList.remove('drag-over');
+                });
+                
+                combineArea.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    combineArea.classList.remove('drag-over');
+                    const cardId = e.dataTransfer.getData('text/plain');
+                    const card = this.player.deck.find(c => c.id === cardId);
+                    if (card && this.isPlayerTurn && !this.waitingForReward) {
+                        this.addToPending(card);
+                    }
+                });
+                
+                cards.forEach(card => {
+                    card.setAttribute('draggable', 'true');
+                    card.addEventListener('dragstart', (e) => {
+                        if (!this.isPlayerTurn || this.waitingForReward) {
+                            e.preventDefault();
+                            return false;
+                        }
+                        e.dataTransfer.setData('text/plain', card.getAttribute('data-card-id'));
+                        card.classList.add('dragging');
+                    });
+                    
+                    card.addEventListener('dragend', () => {
+                        card.classList.remove('dragging');
+                    });
+                    
+                    card.addEventListener('click', () => {
+                        if (this.isPlayerTurn && !this.waitingForReward) {
+                            const cardId = card.getAttribute('data-card-id');
+                            const cardData = this.player.deck.find(c => c.id === cardId);
+                            if (cardData && this.player.mana >= cardData.manaCost) {
+                                this.useCard(cardData);
+                            }
+                        }
+                    });
+                });
+            }
+
+            addToPending(card) {
+                if (this.pendingCards.includes(card)) return;
+                if (this.pendingCards.length >= 2) {
+                    this.addLog('⚠️ Можно комбинировать только 2 карты!', 'critical');
+                    return;
+                }
+                this.pendingCards.push(card);
+                this.updatePendingUI();
+                this.addLog(`📦 Добавлена карта: ${card.name}`, 'elemental');
+            }
+
+            removeFromPending(index) {
+                this.pendingCards.splice(index, 1);
+                this.updatePendingUI();
+            }
+
+            clearPending() {
+                if (this.pendingCards.length === 0) return;
+                this.pendingCards = [];
+                this.updatePendingUI();
+                this.addLog('🗑️ Комбинация очищена', 'elemental');
+            }
+
+            updatePendingUI() {
+                const container = document.getElementById('pendingCards');
+                const placeholder = document.getElementById('combinePlaceholder');
+                const buttons = document.getElementById('combineButtons');
+                const comboInfo = document.getElementById('comboInfo');
+                if (!container) return;
+                if (this.pendingCards.length === 0) {
+                    if (placeholder) placeholder.style.display = 'block';
+                    container.innerHTML = '';
+                    if (buttons) buttons.style.display = 'none';
+                    if (comboInfo) comboInfo.innerHTML = '';
+                    return;
+                }
+                if (placeholder) placeholder.style.display = 'none';
+                if (buttons) buttons.style.display = 'flex';
+                
+                const comboKey = this.pendingCards.length === 2 ? `${this.pendingCards[0].element}+${this.pendingCards[1].element}` : '';
+                const combo = COMBINATIONS[comboKey];
+                
+                container.innerHTML = this.pendingCards.map((card, i) => `
+                    <div class="pending-card ${card.element}">
+                        <div class="card-icon">${card.icon}</div>
+                        <div class="card-name">${card.name}</div>
+                        <div class="remove-card" data-index="${i}">✕</div>
+                    </div>
+                `).join('');
+                
+                document.querySelectorAll('.remove-card').forEach(btn => {
+                    btn.onclick = (e) => {
+                        e.stopPropagation();
+                        this.removeFromPending(parseInt(btn.dataset.index));
+                    };
+                });
+                
+                if (this.pendingCards.length === 2 && combo) {
+                    const dmg = typeof combo.damage === 'object' ? `${combo.damage.min}-${combo.damage.max}` : combo.damage;
+                    comboInfo.innerHTML = `✨ ${combo.name} ${combo.icon} | Урон: ${dmg} | Мана: ${combo.manaCost}<br><small>${combo.desc}</small> ✨`;
+                    comboInfo.style.color = '#ffd700';
+                } else if (this.pendingCards.length === 2 && !combo) {
+                    comboInfo.innerHTML = '❌ Эти стихии не сочетаются! ❌';
+                    comboInfo.style.color = '#ff6b6b';
+                } else {
+                    comboInfo.innerHTML = '✨ Выберите вторую карту ✨';
+                }
+            }
+
+            createDamagePopup(x, y, damage, isCrit = false) {
+                const popup = document.createElement('div');
+                popup.className = 'damage-popup';
+                if (isCrit) popup.classList.add('crit-popup');
+                popup.innerHTML = isCrit ? `💥 ${damage} КРИТ! 💥` : `-${damage}`;
+                popup.style.left = x + 'px';
+                popup.style.top = y + 'px';
+                document.body.appendChild(popup);
+                setTimeout(() => popup.remove(), 800);
+            }
+
+            createHealPopup(x, y, amount) {
+                const popup = document.createElement('div');
+                popup.className = 'damage-popup heal-popup';
+                popup.innerHTML = `+${amount} ❤️`;
+                popup.style.left = x + 'px';
+                popup.style.top = y + 'px';
+                document.body.appendChild(popup);
+                setTimeout(() => popup.remove(), 800);
+            }
+
+            updateEnemyEffectsUI() {
+                const container = document.getElementById('enemyEffects');
+                if (!container) return;
+                
+                const effects = [];
+                if (this.enemyEffects.burn.turns > 0) {
+                    effects.push(`<span class="effect-badge effect-burn">🔥 Поджог: ${this.enemyEffects.burn.damage} (${this.enemyEffects.burn.turns})</span>`);
+                }
+                if (this.enemyEffects.poison.turns > 0) {
+                    effects.push(`<span class="effect-badge effect-poison">🌿 Отравление: ${this.enemyEffects.poison.damage} (${this.enemyEffects.poison.turns})</span>`);
+                }
+                if (this.enemyEffects.freeze.turns > 0) {
+                    effects.push(`<span class="effect-badge effect-freeze">❄️ Заморозка: ${this.enemyEffects.freeze.turns}</span>`);
+                }
+                if (this.enemyEffects.shock.turns > 0) {
+                    effects.push(`<span class="effect-badge effect-shock">⚡ Шок: -${Math.round((1 - this.enemyEffects.shock.value) * 100)}%</span>`);
+                }
+                if (this.enemyEffects.weak.turns > 0) {
+                    effects.push(`<span class="effect-badge effect-weak">💧 Ослабление: -${Math.round((1 - this.enemyEffects.weak.value) * 100)}%</span>`);
+                }
+                if (this.enemyEffects.regen.turns > 0) {
+                    effects.push(`<span class="effect-badge effect-regen">🌸 Регенерация: +${this.enemyEffects.regen.value}</span>`);
+                }
+                
+                container.innerHTML = effects.join('');
+            }
+
+            applyEffects() {
+                let effectDamage = 0;
+                let effectMessages = [];
+                
+                if (this.enemyEffects.burn.turns > 0) {
+                    const damage = this.enemyEffects.burn.damage + this.activeBonuses.burnBonus;
+                    this.currentEnemy.hp -= damage;
+                    effectDamage += damage;
+                    effectMessages.push(`🔥 Поджог наносит ${damage} урона`);
+                    this.enemyEffects.burn.turns--;
+                    const rect = document.querySelector('.enemy-card')?.getBoundingClientRect();
+                    if (rect) this.createDamagePopup(rect.left + 50, rect.top + 50, damage);
+                }
+                
+                if (this.enemyEffects.poison.turns > 0) {
+                    const damage = this.enemyEffects.poison.damage + this.activeBonuses.poisonBonus;
+                    this.currentEnemy.hp -= damage;
+                    effectDamage += damage;
+                    effectMessages.push(`🌿 Отравление наносит ${damage} урона`);
+                    this.enemyEffects.poison.turns--;
+                    const rect = document.querySelector('.enemy-card')?.getBoundingClientRect();
+                    if (rect) this.createDamagePopup(rect.left + 50, rect.top + 50, damage);
+                }
+                
+                if (this.enemyEffects.regen.turns > 0) {
+                    this.player.hp = Math.min(this.player.maxHp, this.player.hp + this.enemyEffects.regen.value);
+                    effectMessages.push(`🌸 Регенерация восстановила ${this.enemyEffects.regen.value} HP`);
+                    const rect = document.querySelector('.player-info')?.getBoundingClientRect();
+                    if (rect) this.createHealPopup(rect.left + 50, rect.top + 20, this.enemyEffects.regen.value);
+                    this.enemyEffects.regen.turns--;
+                }
+                
+                if (effectDamage > 0) {
+                    this.addLog(`✨ Эффекты: ${effectMessages.join(', ')} ✨`, 'effect');
+                    this.updateUI();
+                }
+                
+                return effectDamage;
+            }
+
+            applyEquipmentBonuses() {
+                this.activeBonuses = {
+                    dodgeChance: 0, globalDamage: 1, globalDefense: 1,
+                    doubleChance: 0, fireAura: 0, healPerTurn: 0, freezeBonus: 0,
+                    fireDamage: 1, waterDamage: 1, natureDamage: 1, lightningDamage: 1, iceDamage: 1,
+                    vampirePercent: 0, burnBonus: 0, poisonBonus: 0,
+                    critChance: 0.05, critDamage: 1.5
+                };
+
+                const setCount = {};
+
+                for (const [slot, item] of Object.entries(this.player.equipment)) {
+                    if (item) {
+                        setCount[item.set] = (setCount[item.set] || 0) + 1;
+                        if (item.type === 'defense') this.activeBonuses.globalDefense *= item.value;
+                        if (item.type === 'dodge') this.activeBonuses.dodgeChance += item.value;
+                        if (item.type === 'double') this.activeBonuses.doubleChance += item.value;
+                        if (item.type === 'freeze_bonus') this.activeBonuses.freezeBonus += item.value;
+                        if (item.type === 'vampire') this.activeBonuses.vampirePercent += item.value;
+                        if (item.type === 'element_damage') {
+                            if (item.element === 'fire') this.activeBonuses.fireDamage *= item.value;
+                            else if (item.element === 'water') this.activeBonuses.waterDamage *= item.value;
+                            else if (item.element === 'nature') this.activeBonuses.natureDamage *= item.value;
+                            else if (item.element === 'lightning') this.activeBonuses.lightningDamage *= item.value;
+                            else if (item.element === 'ice') this.activeBonuses.iceDamage *= item.value;
+                        }
+                    }
+                }
+
+                for (const [set, count] of Object.entries(setCount)) {
+                    const setBonus = SET_BONUSES[set];
+                    if (setBonus && count >= 2) {
+                        if (set === 'fire') { this.activeBonuses.fireDamage *= 1.15; this.activeBonuses.globalDamage *= 1.15; this.activeBonuses.burnBonus += 2; }
+                        if (set === 'ice') this.activeBonuses.globalDefense *= 0.85;
+                        if (set === 'lightning') this.activeBonuses.doubleChance += 0.1;
+                        if (set === 'nature') { this.activeBonuses.natureDamage *= 1.15; this.activeBonuses.poisonBonus += 2; }
+                        if (set === 'dragon') this.activeBonuses.globalDamage *= 1.2;
+                        if (set === 'wind') this.activeBonuses.dodgeChance += 0.15;
+                        this.addLog(`✨ Сетовый бонус: ${setBonus[2]} ✨`, 'artifact');
+                    }
+                    if (setBonus && count >= 3 && setBonus[3]) {
+                        if (set === 'dragon') this.activeBonuses.globalDefense *= 0.7;
+                        if (set === 'fire') this.activeBonuses.fireAura = 6;
+                        if (set === 'nature') this.activeBonuses.healPerTurn = 6;
+                        this.addLog(`✨ Сетовый бонус: ${setBonus[3]} ✨`, 'artifact');
+                    }
+                }
+
+                const container = document.getElementById('setBonus');
+                if (container) {
+                    const bonuses = [];
+                    for (const [set, count] of Object.entries(setCount)) {
+                        const setBonus = SET_BONUSES[set];
+                        if (setBonus && count >= 2) {
+                            if (count >= 3 && setBonus[3]) bonuses.push(setBonus[3]);
+                            else bonuses.push(setBonus[2]);
+                        }
+                    }
+                    container.innerHTML = bonuses.length ? `🎯 ${bonuses.join(' | ')}` : 'Соберите 2+ предметов для бонуса!';
+                }
+            }
+
+            castCombo() {
+                if (this.pendingCards.length !== 2) {
+                    this.addLog('⚠️ Нужно 2 карты для комбинации!', 'critical');
+                    return;
+                }
+                if (!this.isPlayerTurn) {
+                    this.addLog('⏳ Сейчас ход врага!', 'critical');
+                    return;
+                }
+                if (this.waitingForReward) return;
+
+                const comboKey = `${this.pendingCards[0].element}+${this.pendingCards[1].element}`;
+                const combo = COMBINATIONS[comboKey];
+                if (!combo) {
+                    this.addLog('❌ Неудачная комбинация!', 'critical');
+                    this.clearPending();
+                    return;
+                }
+
+                if (this.player.mana < combo.manaCost) {
+                    this.addLog(`⚠️ Нужно ${combo.manaCost} маны!`, 'critical');
+                    return;
+                }
+
+                this.player.mana -= combo.manaCost;
+
+                // Расчёт урона
+                let damage = typeof combo.damage === 'object' 
+                    ? Math.floor(Math.random() * (combo.damage.max - combo.damage.min + 1) + combo.damage.min)
+                    : combo.damage;
+                
+                let finalDamage = damage * this.activeBonuses.globalDamage;
+                
+                // Бонус стихий
+                const comboElements = [this.pendingCards[0].element, this.pendingCards[1].element];
+                for (const elem of comboElements) {
+                    if (elem === 'fire') finalDamage *= this.activeBonuses.fireDamage;
+                    else if (elem === 'water') finalDamage *= this.activeBonuses.waterDamage;
+                    else if (elem === 'nature') finalDamage *= this.activeBonuses.natureDamage;
+                    else if (elem === 'lightning') finalDamage *= this.activeBonuses.lightningDamage;
+                    else if (elem === 'ice') finalDamage *= this.activeBonuses.iceDamage;
+                }
+                
+                // Бонус комбо
+                if (this.lastCombo === comboKey) {
+                    this.comboCounter++;
+                    finalDamage *= (1 + this.comboCounter * 0.1);
+                    this.addLog(`⚡ КОМБО x${this.comboCounter}! +${this.comboCounter * 10}% урона! ⚡`, 'critical');
+                } else {
+                    this.comboCounter = 1;
+                }
+                this.lastCombo = comboKey;
+                
+                // Критический удар
+                let isCrit = false;
+                if (Math.random() < this.activeBonuses.critChance) {
+                    finalDamage *= this.activeBonuses.critDamage;
+                    isCrit = true;
+                    this.stats.critStreak++;
+                    if (this.stats.critStreak > this.stats.bestCritStreak) this.stats.bestCritStreak = this.stats.critStreak;
+                    this.updateChallengeProgress('critStreak', 1);
+                    this.addLog(`⚡ КРИТИЧЕСКИЙ УДАР! x${this.activeBonuses.critDamage} урона! ⚡`, 'critical');
+                } else {
+                    this.stats.critStreak = 0;
+                }
+                
+                finalDamage = Math.floor(finalDamage);
+                
+                // Визуальный эффект урона
+                const enemyRect = document.querySelector('.enemy-card')?.getBoundingClientRect();
+                if (enemyRect) this.createDamagePopup(enemyRect.left + 50, enemyRect.top + 50, finalDamage, isCrit);
+                
+                this.addLog(`🎯 ${combo.name} ${combo.icon} наносит ${finalDamage} урона!`, 'combo');
+                if (isCrit) this.addLog(`⚡ КРИТИЧЕСКИЙ УДАР! ⚡`, 'critical');
+                
+                // Статистика
+                if (comboElements.includes('fire')) {
+                    this.stats.fireDamage += finalDamage;
+                    this.updateChallengeProgress('fireDamage', finalDamage);
+                }
+                if (comboElements.includes('nature')) this.stats.natureCards++;
+                this.stats.combosDone++;
+                
+                // Применяем эффект комбинации
+                if (combo.effect) {
+                    this.addLog(`✨ Эффект: ${combo.desc} ✨`, 'effect');
+                    
+                    if (combo.effect === 'burn') {
+                        this.enemyEffects.burn = { damage: combo.effectValue + this.activeBonuses.burnBonus, turns: combo.effectDuration };
+                    } else if (combo.effect === 'poison') {
+                        this.enemyEffects.poison = { damage: combo.effectValue + this.activeBonuses.poisonBonus, turns: combo.effectDuration };
+                    } else if (combo.effect === 'freeze') {
+                        this.enemyEffects.freeze = { turns: combo.effectDuration + this.activeBonuses.freezeBonus };
+                        this.stats.freezeCount++;
+                        this.updateChallengeProgress('freezeCount', 1);
+                    } else if (combo.effect === 'shock') {
+                        this.enemyEffects.shock = { value: combo.effectValue, turns: combo.effectDuration };
+                    } else if (combo.effect === 'weak') {
+                        this.enemyEffects.weak = { value: combo.effectValue, turns: combo.effectDuration };
+                    } else if (combo.effect === 'regen') {
+                        this.enemyEffects.regen = { value: combo.effectValue, turns: combo.effectDuration };
+                    }
+                }
+
+                // Лечение от комбинации
+                if (combo.heal) {
+                    this.player.hp = Math.min(this.player.maxHp, this.player.hp + combo.heal);
+                    this.stats.totalHeal += combo.heal;
+                    this.updateChallengeProgress('totalHeal', combo.heal);
+                    const playerRect = document.querySelector('.player-info')?.getBoundingClientRect();
+                    if (playerRect) this.createHealPopup(playerRect.left + 50, playerRect.top + 20, combo.heal);
+                    this.addLog(`❤️ Восстановлено ${combo.heal} HP!`, 'elemental');
+                }
+
+                // Вампиризм
+                if (this.activeBonuses.vampirePercent > 0) {
+                    const vampHeal = Math.floor(finalDamage * this.activeBonuses.vampirePercent);
+                    if (vampHeal > 0) {
+                        this.player.hp = Math.min(this.player.maxHp, this.player.hp + vampHeal);
+                        this.addLog(`🩸 Вампиризм восстановил ${vampHeal} HP!`, 'artifact');
+                    }
+                }
+
+                this.currentEnemy.hp -= finalDamage;
+
+                if (finalDamage > this.bestDamage) {
+                    this.bestDamage = finalDamage;
+                    this.saveStats();
+                    this.addLog(`🏆 НОВЫЙ РЕКОРД: ${finalDamage} урона! 🏆`, 'critical');
+                }
+
+                this.updateEnemyEffectsUI();
+                this.clearPending();
+                this.updateUI();
+
+                if (this.currentEnemy.hp <= 0) {
+                    this.victory();
+                    return;
+                }
+
+                this.isPlayerTurn = false;
+                setTimeout(() => this.enemyTurn(), 500);
+            }
+
+            useCard(card) {
+                if (!this.isPlayerTurn) {
+                    this.addLog('⏳ Сейчас ход врага!', 'critical');
+                    return;
+                }
+                if (this.waitingForReward) return;
+                if (this.player.mana < card.manaCost) {
+                    this.addLog(`⚠️ Нужно ${card.manaCost} маны!`, 'critical');
+                    return;
+                }
+
+                this.player.mana -= card.manaCost;
+
+                let damage = typeof card.damage === 'object'
+                    ? Math.floor(Math.random() * (card.damage.max - card.damage.min + 1) + card.damage.min)
+                    : card.damage;
+                
+                let finalDamage = damage * this.activeBonuses.globalDamage;
+                
+                if (card.element === 'fire') finalDamage *= this.activeBonuses.fireDamage;
+                else if (card.element === 'water') finalDamage *= this.activeBonuses.waterDamage;
+                else if (card.element === 'nature') finalDamage *= this.activeBonuses.natureDamage;
+                else if (card.element === 'lightning') finalDamage *= this.activeBonuses.lightningDamage;
+                else if (card.element === 'ice') finalDamage *= this.activeBonuses.iceDamage;
+                
+                finalDamage = Math.floor(finalDamage);
+                
+                const enemyRect = document.querySelector('.enemy-card')?.getBoundingClientRect();
+                if (enemyRect) this.createDamagePopup(enemyRect.left + 50, enemyRect.top + 50, finalDamage);
+                
+                this.addLog(`🎴 ${card.name} наносит ${finalDamage} урона!`);
+
+                this.currentEnemy.hp -= finalDamage;
+
+                if (finalDamage > this.bestDamage) {
+                    this.bestDamage = finalDamage;
+                    this.saveStats();
+                }
+                
+                this.updateUI();
+
+                if (this.currentEnemy.hp <= 0) {
+                    this.victory();
+                    return;
+                }
+
+                this.isPlayerTurn = false;
+                setTimeout(() => this.enemyTurn(), 500);
+            }
+
+            processEnemyTurnEffects() {
+                if (this.enemyEffects.freeze.turns > 0) {
+                    this.enemyEffects.freeze.turns--;
+                    this.addLog(`❄️ Враг заморожен и пропускает ход! Осталось: ${this.enemyEffects.freeze.turns}`, 'elemental');
+                    return true;
+                }
+                
+                if (this.enemyEffects.shock.turns > 0) {
+                    if (Math.random() > this.enemyEffects.shock.value) {
+                        this.enemyEffects.shock.turns--;
+                        this.addLog(`⚡ Враг под действием шока и промахивается!`, 'effect');
+                        return true;
+                    }
+                    this.enemyEffects.shock.turns--;
+                }
+                
+                return false;
+            }
+
+            enemyTurn() {
+                if (this.isPlayerTurn) return;
+                
+                const skipTurn = this.processEnemyTurnEffects();
+                
+                if (this.player.regen > 0) {
+                    this.player.hp = Math.min(this.player.maxHp, this.player.hp + this.player.regen);
+                    this.addLog(`🌿 Регенерация +${this.player.regen} HP`, 'elemental');
+                }
+                
+                if (this.activeBonuses.healPerTurn > 0) {
+                    this.player.hp = Math.min(this.player.maxHp, this.player.hp + this.activeBonuses.healPerTurn);
+                    this.addLog(`🌿 Лечение +${this.activeBonuses.healPerTurn} HP`, 'artifact');
+                }
+
+                if (this.activeBonuses.fireAura > 0) {
+                    this.currentEnemy.hp -= this.activeBonuses.fireAura;
+                    this.addLog(`🔥 Огненная аура: ${this.activeBonuses.fireAura} урона!`, 'artifact');
+                    if (this.currentEnemy.hp <= 0) {
+                        this.victory();
+                        return;
+                    }
+                }
+
+                this.applyEffects();
+                
+                if (this.currentEnemy.hp <= 0) {
+                    this.victory();
+                    return;
+                }
+
+                if (skipTurn) {
+                    this.isPlayerTurn = true;
+                    this.player.mana = Math.min(this.player.maxMana, this.player.mana + 2);
+                    this.updateUI();
+                    this.addLog(`💙 Восстановлено 2 маны`, 'elemental');
+                    return;
+                }
+
+                let damage = this.currentEnemy.damage + Math.floor(Math.random() * 6) - 2;
+                damage = Math.max(5, damage);
+                
+                if (this.enemyEffects.weak.turns > 0) {
+                    damage = Math.floor(damage * this.enemyEffects.weak.value);
+                    this.enemyEffects.weak.turns--;
+                }
+                
+                if (Math.random() < this.activeBonuses.dodgeChance) {
+                    this.addLog(`💨 Уклонение! Атака не нанесла урона!`, 'artifact');
+                    this.isPlayerTurn = true;
+                    this.player.mana = Math.min(this.player.maxMana, this.player.mana + 2);
+                    this.updateUI();
+                    return;
+                }
+                
+                damage = Math.floor(damage * this.activeBonuses.globalDefense);
+                
+                this.player.hp -= damage;
+                const playerRect = document.querySelector('.player-info')?.getBoundingClientRect();
+                if (playerRect) this.createDamagePopup(playerRect.left + 50, playerRect.top + 20, damage);
+                this.addLog(`👾 ${this.currentEnemy.name} наносит ${damage} урона!`, 'critical');
+                this.updateUI();
+
+                if (this.player.hp <= 0) {
+                    const amulet = this.player.equipment.amulet;
+                    if (amulet && amulet.type === 'revive' && !this.reviveUsed) {
+                        this.reviveUsed = true;
+                        this.player.hp = Math.floor(this.player.maxHp * 0.5);
+                        this.addLog(`🔥 ${amulet.name} воскрешает вас! 50% HP!`, 'artifact');
+                        if (playerRect) this.createHealPopup(playerRect.left + 50, playerRect.top + 20, Math.floor(this.player.maxHp * 0.5));
+                        this.updateUI();
+                        this.isPlayerTurn = true;
+                        this.player.mana = Math.min(this.player.maxMana, this.player.mana + 2);
+                        return;
+                    }
+                    this.gameOver();
+                    return;
+                }
+
+                this.isPlayerTurn = true;
+                this.player.mana = Math.min(this.player.maxMana, this.player.mana + 2);
+                this.updateUI();
+                this.addLog(`💙 Восстановлено 2 маны`, 'elemental');
+            }
+
+            endTurn() {
+                if (!this.isPlayerTurn) return;
+                if (this.waitingForReward) return;
+                this.clearPending();
+                this.isPlayerTurn = false;
+                this.enemyTurn();
+            }
+
+            spawnEnemy() {
+                let available = [...ENEMIES];
+                if (this.player.level <= 3) available = ENEMIES.slice(0, 5);
+                const enemy = available[Math.floor(Math.random() * available.length)];
+                const scaledHp = Math.floor(enemy.hp + (this.player.level - 1) * 5);
+                this.currentEnemy = {
+                    ...enemy,
+                    hp: scaledHp,
+                    maxHp: scaledHp,
+                    damage: enemy.damage + Math.floor((this.player.level - 1) * 1.5)
+                };
+                
+                this.enemyEffects = {
+                    burn: { damage: 0, turns: 0 },
+                    poison: { damage: 0, turns: 0 },
+                    freeze: { turns: 0 },
+                    shock: { value: 1, turns: 0 },
+                    weak: { value: 1, turns: 0 },
+                    regen: { value: 0, turns: 0 }
+                };
+                
+                this.updateUI();
+                this.updateEnemyEffectsUI();
+                this.addLog(`⚔️ Появился ${this.currentEnemy.name} (Уровень ${this.player.level})!`, 'critical');
+            }
+
+            victory() {
+                this.player.wins++;
+                this.totalWins++;
+                this.player.coins += 10;
+                this.saveStats();
+                this.addLog(`🎉 ПОБЕДА! +10 монет! 🎉`, 'combo');
+                this.player.hp = Math.min(this.player.maxHp, this.player.hp + 20);
+                this.addLog(`❤️ Восстановлено 20 здоровья!`, 'elemental');
+                this.waitingForReward = true;
+                this.showRewardScreen();
+            }
+
+            showRewardScreen() {
+                const options = [];
+                const newCards = BASE_CARDS.filter(c => !this.player.deck.some(pc => pc.id === c.id));
+                if (newCards.length > 0) {
+                    const card = newCards[Math.floor(Math.random() * newCards.length)];
+                    options.push({ type: 'card', data: card, name: card.name, desc: `Новая карта: ${card.name}`, icon: card.icon });
+                }
+                const ownedSlots = Object.keys(this.player.equipment).filter(s => this.player.equipment[s] !== null);
+                const availableArtifacts = ARTIFACTS.filter(a => !ownedSlots.includes(a.slot));
+                if (availableArtifacts.length > 0) {
+                    const artifact = availableArtifacts[Math.floor(Math.random() * availableArtifacts.length)];
+                    options.push({ type: 'artifact', data: artifact, name: artifact.name, desc: artifact.desc, icon: artifact.icon });
+                }
+                const randomCard = this.player.deck[Math.floor(Math.random() * this.player.deck.length)];
+                options.push({ type: 'upgrade', data: randomCard, name: `⬆️ ${randomCard.name}`, desc: 'Урон +25%', icon: '⬆️' });
+                options.push({ type: 'coins', name: '💰 30 монет', desc: 'Для покупки артефактов в магазине', icon: '💰' });
+                const shuffled = options.sort(() => 0.5 - Math.random()).slice(0, 3);
+                const overlay = document.createElement('div');
+                overlay.className = 'reward-screen';
+                overlay.innerHTML = `
+                    <div class="reward-window">
+                        <h2>🏆 ПОБЕДА! 🏆</h2>
+                        <p>Выбери награду:</p>
+                        <div class="reward-options">
+                            ${shuffled.map((opt, i) => `
+                                <div class="reward-option" data-reward="${i}">
+                                    <div style="font-size: 1.8em;">${opt.icon}</div>
+                                    <div style="flex:1; text-align: left;">
+                                        <div style="font-weight: bold;">${opt.name}</div>
+                                        <div style="font-size: 0.7em; opacity: 0.8;">${opt.desc}</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+                document.querySelectorAll('.reward-option').forEach((el, idx) => {
+                    el.onclick = () => {
+                        this.selectReward(shuffled[idx]);
+                        overlay.remove();
+                    };
+                });
+            }
+
+            selectReward(reward) {
+                if (reward.type === 'card') {
+                    this.player.deck.push(reward.data);
+                    this.addLog(`📦 Новая карта: ${reward.data.name}!`, 'artifact');
+                } else if (reward.type === 'artifact') {
+                    const slot = reward.data.slot;
+                    this.player.equipment[slot] = reward.data;
+                    this.addLog(`✨ Получен артефакт: ${reward.data.name}! ✨`, 'artifact');
+                    this.applyEquipmentBonuses();
+                } else if (reward.type === 'upgrade') {
+                    if (typeof reward.data.damage === 'number') {
+                        reward.data.damage = Math.floor(reward.data.damage * 1.25);
+                    } else {
+                        reward.data.damage.min = Math.floor(reward.data.damage.min * 1.25);
+                        reward.data.damage.max = Math.floor(reward.data.damage.max * 1.25);
+                    }
+                    this.addLog(`⬆️ Карта ${reward.data.name} улучшена!`, 'artifact');
+                } else if (reward.type === 'coins') {
+                    this.player.coins += 30;
+                    this.addLog(`💰 Получено 30 монет! 💰`, 'artifact');
+                }
+                this.completeReward();
+            }
+
+            completeReward() {
+                this.waitingForReward = false;
+                this.player.level++;
+                this.spawnEnemy();
+                this.isPlayerTurn = true;
+                this.updateUI();
+                this.addLog(`⭐ Уровень ${this.player.level}!`, 'critical');
+            }
+
+            restartBattle() {
+                if (this.waitingForReward) return;
+                this.player.hp = this.player.maxHp;
+                this.player.mana = 5;
+                this.spawnEnemy();
+                this.isPlayerTurn = true;
+                this.clearPending();
+                this.updateUI();
+                this.addLog('🔄 Битва перезапущена!', 'elemental');
+            }
+
+            showArtifactInfo(slot) {
+                const item = this.player.equipment[slot];
+                this.showTooltip(item ? `${item.icon} ${item.name}: ${item.desc}` : `❓ Пустой слот. Победите врага!`);
+            }
+
+            showTooltip(message) {
+                const tooltip = document.createElement('div');
+                tooltip.className = 'tooltip';
+                tooltip.innerHTML = message;
+                document.body.appendChild(tooltip);
+                setTimeout(() => tooltip.remove(), 1500);
+            }
+
+            updateUI() {
+                const hpEl = document.getElementById('playerHp');
+                const maxHpEl = document.getElementById('playerMaxHp');
+                const manaEl = document.getElementById('playerMana');
+                const levelEl = document.getElementById('playerLevel');
+                const winsEl = document.getElementById('playerWins');
+                if (hpEl) hpEl.innerText = this.player.hp;
+                if (maxHpEl) maxHpEl.innerText = this.player.maxHp;
+                if (manaEl) manaEl.innerText = this.player.mana;
+                if (levelEl) levelEl.innerText = this.player.level;
+                if (winsEl) winsEl.innerText = this.player.wins;
+                
+                const hpFill = document.getElementById('hpFill');
+                if (hpFill) hpFill.style.width = `${(this.player.hp / this.player.maxHp) * 100}%`;
+                const manaFill = document.getElementById('manaFill');
+                if (manaFill) manaFill.style.width = `${(this.player.mana / this.player.maxMana) * 100}%`;
+                
+                const slots = ['weapon', 'armor', 'helmet', 'boots', 'amulet'];
+                for (const slot of slots) {
+                    const el = document.getElementById(`${slot}Slot`);
+                    const item = this.player.equipment[slot];
+                    if (el) {
+                        el.innerHTML = item ? item.icon : '—';
+                        const slotDiv = document.querySelector(`.artifact-slot[data-slot="${slot}"]`);
+                        if (slotDiv) {
+                            if (item) slotDiv.classList.add('filled');
+                            else slotDiv.classList.remove('filled');
+                        }
+                    }
+                }
+                
+                if (this.currentEnemy) {
+                    const enemyName = document.getElementById('enemyName');
+                    const enemyHp = document.getElementById('enemyHp');
+                    const enemyMaxHp = document.getElementById('enemyMaxHp');
+                    const enemyArt = document.getElementById('enemyArt');
+                    const enemyHpText = document.getElementById('enemyHpText');
+                    const enemyStatus = document.getElementById('enemyStatus');
+                    if (enemyName) enemyName.innerText = this.currentEnemy.name;
+                    if (enemyHp) enemyHp.innerText = this.currentEnemy.hp;
+                    if (enemyMaxHp) enemyMaxHp.innerText = this.currentEnemy.maxHp;
+                    if (enemyArt) enemyArt.innerText = this.currentEnemy.art;
+                    if (enemyHpText) enemyHpText.innerHTML = `❤️ ${this.currentEnemy.hp}/${this.currentEnemy.maxHp}`;
+                    
+                    let statusText = '';
+                    if (this.enemyEffects.freeze.turns > 0) statusText += '❄️ ЗАМОРОЖЕН ';
+                    if (this.enemyEffects.shock.turns > 0) statusText += '⚡ ШОК ';
+                    if (this.enemyEffects.weak.turns > 0) statusText += '💧 ОСЛАБЛЕН ';
+                    if (enemyStatus) enemyStatus.innerHTML = statusText;
+                    
+                    const elemIcon = document.getElementById('enemyElementIcon');
+                    if (elemIcon) elemIcon.innerHTML = this.currentEnemy.icon || '👾';
+                }
+                
+                this.updateEnemyEffectsUI();
+                this.renderCards();
+            }
+
+            renderCards() {
+                const container = document.getElementById('handCards');
+                if (!container) return;
+                container.innerHTML = '';
+                this.player.deck.forEach(card => {
+                    const cardDiv = document.createElement('div');
+                    cardDiv.className = `card ${card.element}`;
+                    if (this.player.mana < card.manaCost && this.isPlayerTurn) {
+                        cardDiv.classList.add('disabled');
+                    }
+                    cardDiv.setAttribute('data-card-id', card.id);
+                    const damageText = typeof card.damage === 'object' ? `${card.damage.min}-${card.damage.max}` : card.damage;
+                    cardDiv.innerHTML = `
+                        <div class="card-icon">${card.icon}</div>
+                        <div class="card-name">${card.name}</div>
+                        <div class="card-cost">⚔️ ${damageText}</div>
+                    `;
+                    container.appendChild(cardDiv);
+                });
+                this.setupDragAndDrop();
+            }
+
+            addLog(msg, type = 'normal') {
+                const log = document.getElementById('logPanel');
+                if (!log) return;
+                const entry = document.createElement('div');
+                entry.className = `log-entry ${type === 'critical' ? 'log-critical' : type === 'combo' ? 'log-combo' : type === 'elemental' ? 'log-elemental' : type === 'artifact' ? 'log-artifact' : type === 'effect' ? 'log-effect' : ''}`;
+                entry.innerHTML = `[${new Date().toLocaleTimeString().slice(0, 5)}] ${msg}`;
+                log.appendChild(entry);
+                entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                while (log.children.length > 30) log.removeChild(log.firstChild);
+            }
+
+            startGame() {
+                this.player = {
+                    hp: 100, maxHp: 100, mana: 5, maxMana: 10,
+                    level: 1, wins: 0, deck: [], regen: 0, coins: this.player.coins,
+                    equipment: { weapon: null, armor: null, helmet: null, boots: null, amulet: null }
+                };
+                this.initDeck();
+                this.pendingCards = [];
+                this.waitingForReward = false;
+                this.isPlayerTurn = true;
+                this.reviveUsed = false;
+                this.bestDamage = 0;
+                this.comboCounter = 0;
+                this.lastCombo = null;
+                
+                this.activeBonuses = {
+                    dodgeChance: 0, globalDamage: 1, globalDefense: 1,
+                    doubleChance: 0, fireAura: 0, healPerTurn: 0, freezeBonus: 0,
+                    fireDamage: 1, waterDamage: 1, natureDamage: 1, lightningDamage: 1, iceDamage: 1,
+                    vampirePercent: 0, burnBonus: 0, poisonBonus: 0,
+                    critChance: 0.05, critDamage: 1.5
+                };
+                
+                this.enemyEffects = {
+                    burn: { damage: 0, turns: 0 },
+                    poison: { damage: 0, turns: 0 },
+                    freeze: { turns: 0 },
+                    shock: { value: 1, turns: 0 },
+                    weak: { value: 1, turns: 0 },
+                    regen: { value: 0, turns: 0 }
+                };
+                
+                this.spawnEnemy();
+                this.render('gameScreen');
+                this.addLog('✨ Игра началась! Комбинируй карты для мощных эффектов! ✨', 'combo');
+            }
+
+            gameOver() {
+                this.saveStats();
+                const overlay = document.createElement('div');
+                overlay.className = 'gameover-screen';
+                overlay.innerHTML = `
+                    <div class="gameover-window">
+                        <h1>💀 GAME OVER 💀</h1>
+                        <p>Пройдено врагов: ${this.player.wins}</p>
+                        <div style="margin: 20px 0;">
+                            <p>🏆 Всего побед: ${this.totalWins}</p>
+                            <p>💥 Лучший урон: ${this.bestDamage}</p>
+                            <p>💰 Монет: ${this.player.coins}</p>
+                            <p>⚡ Лучшая серия критов: ${this.stats.bestCritStreak}</p>
+                        </div>
+                        <button id="restartGameBtn">ИГРАТЬ СНОВА</button>
+                        <button id="menuBtn" class="secondary">В МЕНЮ</button>
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+                document.getElementById('restartGameBtn').onclick = () => {
+                    overlay.remove();
+                    this.startGame();
+                };
+                document.getElementById('menuBtn').onclick = () => {
+                    overlay.remove();
+                    this.render('startScreen');
+                    this.bindMenuEvents();
+                };
+            }
+        }
+
+        const game = new ElementalDuel();
+    </script>
+</body>
+</html>
